@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -80,7 +79,7 @@ func writeXORAddCodeIntoNewFile(arr []uint8, addCode uint8, info FileInfo, dic D
 	f, err := os.OpenFile(targetPath+info.fileName+dic.name, os.O_RDWR|os.O_CREATE, 0777)
 	defer f.Close()
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println(err)
 	}
 	//对字节切片每个字节异或
 	for i, v := range arr {
@@ -90,19 +89,19 @@ func writeXORAddCodeIntoNewFile(arr []uint8, addCode uint8, info FileInfo, dic D
 	f.Write(arr)
 }
 
-var fileInfoArr = make([]FileInfo, 1)
+var fileInfoArr = make([]FileInfo, 0)
 
 func getAllDatFileList(parentPath string) {
 	parentFileInfo, err := ioutil.ReadDir(parentPath)
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Println(err)
 	}
 	for _, fi := range parentFileInfo {
 		if fi.IsDir() {
 			getAllDatFileList(parentPath + "\\" + fi.Name())
 		} else {
 			if strings.Contains(fi.Name(), ".dat") {
-				fileInfoArr = append(fileInfoArr, FileInfo{parentPath, strings.TrimRight(fi.Name(), ".dat"), ".dat"})
+				fileInfoArr = append(fileInfoArr, FileInfo{parentPath, strings.TrimSuffix(fi.Name(), ".dat"), ".dat"})
 			}
 		}
 	}
