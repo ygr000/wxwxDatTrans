@@ -11,35 +11,59 @@ import (
 )
 
 type Dic struct {
-	name       string  //名称
+	name       string //名称
 	firstIndex uint8  //第一个字节
-	lastIndex  uint8 //第二个字节
+	lastIndex  uint8  //第二个字节
 }
 type FileInfo struct {
-	filePath   string  //文件路径
-	fileName   string  //文件名称 不包括后缀 .dat
-	fileSuffix string  // 文件后缀
+	filePath   string //文件路径
+	fileName   string //文件名称 不包括后缀 .dat
+	fileSuffix string // 文件后缀
 }
 
 var dicList = []Dic{Dic{".jpg", 0xff, 0xd8},
 	Dic{".png", 0x89, 0x50},
 	Dic{".gif", 0x47, 0x49},
-	Dic{"error", 0x00, 0x00},}
+	Dic{"error", 0x00, 0x00}}
 
 func main() {
 	start := time.Now()
 	getAllDatFileList(".\\")
 	var wg sync.WaitGroup
-	for _, v := range fileInfoArr {
-		wg.Add(1)
-		go changeDat(v, &wg)
+
+	// 定义循环值
+	var begin = 0
+	var ended = 9999
+	var num = len(fileInfoArr)
+
+	for i := 0; i <= num/9999; i++ {
+		// 判断结束不能大于总值
+		if ended > num {
+			ended = num
+		}
+
+		fmt.Printf(" 文件总数:%d 分%d批次执行 正在执行第%d批次 开始点:%d 结束点:%d  \n", num, num/9999+1, i+1, begin, ended)
+		slice := fileInfoArr[begin:ended]
+		// 循环赋值
+		begin = ended
+		ended = ended + 9999
+
+		for _, v := range slice {
+			wg.Add(1)
+			go changeDat(v, &wg)
+		}
+		wg.Wait()
+
 	}
-	wg.Wait()
 	end := time.Now()
 	ms := (end.Sub(start).Milliseconds())
 	s := (end.Sub(start).Seconds())
 	fmt.Printf(" 文件数:%d 总共耗时 %d ms (%f s)   \n", len(fileInfoArr), ms, s)
+	fmt.Println("按任意键退出...")
+	var input string
+	fmt.Scanln(&input)
 }
+
 func changeDat(info FileInfo, wg *sync.WaitGroup) {
 	defer wg.Done()
 	data, err := ioutil.ReadFile(info.filePath + "\\" + info.fileName + info.fileSuffix)
@@ -54,6 +78,7 @@ func changeDat(info FileInfo, wg *sync.WaitGroup) {
 	}
 	writeXORAddCodeIntoNewFile(data, addCode, info, dic)
 }
+
 /**
  * arr dat文件字节切片
  *  返回 密码addcode 类型dic ,错误
@@ -71,9 +96,9 @@ func getAddCode(arr []uint8) (addCode uint8, dic Dic, err error) {
 
 func writeXORAddCodeIntoNewFile(arr []uint8, addCode uint8, info FileInfo, dic Dic) {
 	//生成目标路径
-	var pos= strings.LastIndex(info.filePath,"\\")
-	var willReplace=info.filePath[pos:]
-	targetPath := strings.ReplaceAll(info.filePath,willReplace,"\\target"+willReplace+"\\")
+	var pos = strings.LastIndex(info.filePath, "\\")
+	var willReplace = info.filePath[pos:]
+	targetPath := strings.ReplaceAll(info.filePath, willReplace, "\\target"+willReplace+"\\")
 	err := os.MkdirAll(targetPath, os.ModePerm)
 	//打开文件
 	f, err := os.OpenFile(targetPath+info.fileName+dic.name, os.O_RDWR|os.O_CREATE, 0777)
@@ -100,10 +125,9 @@ func getAllDatFileList(parentPath string) {
 		if fi.IsDir() {
 			getAllDatFileList(parentPath + "\\" + fi.Name())
 		} else {
-			if strings.Contains(fi.Name(), ".dat") {
+			if strings.HasSuffix(fi.Name(), ".dat") {
 				fileInfoArr = append(fileInfoArr, FileInfo{parentPath, strings.TrimSuffix(fi.Name(), ".dat"), ".dat"})
 			}
 		}
 	}
-
 }
